@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PayPal Integration Sample</title>
+</head>
+<body>
+  <h1>PayPal Checkout Integration</h1>
+  <div id="paypal-button-container"></div>
+
+  <!-- Load PayPal's JS SDK; replace REPLACE_CLIENT_ID with your client ID -->
+  <script src="https://www.paypal.com/sdk/js?client-id=REPLACE_CLIENT_ID&currency=USD"></script>
+
+  <script>
+    // Render the PayPal button into #paypal-button-container
+    paypal.Buttons({
+      // Call your server to set up the transaction
+      createOrder: function() {
+        return fetch('/api/orders', {
+          method: 'POST'
+        })
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(order) {
+          return order.orderID; // Use the order ID returned by your server
+        });
+      },
+
+      // Call your server to finalize the transaction
+      onApprove: function(data) {
+        return fetch('/api/orders/' + data.orderID + '/capture', {
+          method: 'POST'
+        })
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(details) {
+          // Show a success message to the buyer
+          alert('Transaction completed by ' + details.result.payer.name.given_name);
+        });
+      }
+    }).render('#paypal-button-container');
+  </script>
+</body>
+</html>
