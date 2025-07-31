@@ -57,6 +57,26 @@ app.post('/api/orders/:orderID/capture', async (req, res) => {
   }
 });
 
+// ✅ Webhook Listener endpoint
+app.post('/webhook', (req, res) => {
+  const event = req.body;
+
+  console.log('📩 Webhook recebido:');
+  console.log(JSON.stringify(event, null, 2));
+
+  if (event.event_type === 'CHECKOUT.ORDER.APPROVED') {
+    console.log('✅ Pedido aprovado pelo cliente');
+    // Você pode salvar o orderID, buyer info, etc. aqui
+  }
+
+  if (event.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
+    console.log('💰 Pagamento capturado com sucesso');
+    // Atualize status de pedido, estoque, etc.
+  }
+
+  res.sendStatus(200);
+});
+
 // Start server
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
