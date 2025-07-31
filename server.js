@@ -134,3 +134,14 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });
+
+// Retorna uma lista com todos os orderIDs recebidos via webhook
+app.get('/api/status', (req, res) => {
+  const allOrderIDs = Object.keys(paymentStatus);
+  res.json(allOrderIDs);
+});
+// Retorna o objeto completo com todos os status de pedidos
+app.get('/api/status/full', (req, res) => {
+  res.json(paymentStatus);
+});
+
