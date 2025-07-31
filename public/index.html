@@ -1,45 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PayPal Integration Sample</title>
+    <meta charset="UTF-8">
+    <title>PayPal Checkout Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        label {
+            display: block;
+            margin-top: 8px;
+        }
+        input {
+            width: 300px;
+            padding: 5px;
+            margin-top: 4px;
+        }
+        button {
+            margin-top: 12px;
+            padding: 8px 12px;
+            background-color: #0070ba;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-  <h1>PayPal Checkout Integration</h1>
-  <div id="paypal-button-container"></div>
-  <!-- Load PayPal's JS SDK with client ID, locale, buyer country for sandbox, and enable Venmo -->
-  <script src="https://www.paypal.com/sdk/js?client-id=ASoiGApDh_Ap4A7C6qhEhX5a9CaKAEwbmKoNr_kymdbQxIDxTznAwWr_-2PD2S-xqTvKJMT1w-yW8_ea&currency=USD&locale=en_US&buyer-country=US&enable-funding=venmo"></script>
-  <script>
-    // Render the PayPal button into #paypal-button-container
-    paypal.Buttons({
-      // Call your server to set up the transaction
-      createOrder: function() {
-        return fetch('/api/orders', {
-          method: 'POST'
-        })
-        .then(function(response) {
-          return response.json();
-        })
-        .then(function(order) {
-          return order.orderID; // Use the order ID returned by your server
-        });
-      },
-      // Call your server to finalize the transaction
-      onApprove: function(data) {
-        return fetch('/api/orders/' + data.orderID + '/capture', {
-          method: 'POST'
-        })
-        .then(function(response) {
-          return response.json();
-        })
-        .then(function(details) {
-          // Show a success message to the buyer
-          alert('Transaction completed by ' + details.result.payer.name.given_name + '!');
-        });
-      }
-    }).render('#paypal-button-container');
-  </script>
+<h1>Configure PayPal Button</h1>
+<p>Use the fields below to configure the PayPal JS SDK. Provide your client ID (e.g., sandbox or live ID) and optionally set a locale, buyer-country (only for sandbox testing) and enable-funding parameters (comma‑separated).</p>
+<form id="configForm" onsubmit="loadPayPalButton(); return false;">
+    <label for="clientId">Client ID</label>
+    <input type="text" id="clientId" name="clientId" placeholder="Enter your PayPal client ID" required>
+
+    <label for="locale">Locale (optional)</label>
+    <input type="text" id="locale" name="locale" placeholder="e.g., en_US">
+
+    <label for="buyerCountry">Buyer Country (sandbox only)</label>
+    <input type="text" id="buyerCountry" name="buyerCountry" placeholder="e.g., US">
+
+    <label for="enableFunding">Enable Funding (comma‑separated, optional)</label>
+    <input type="text" id="enableFunding" name="enableFunding" placeholder="e.g., venmo,paylater">
+
+    <button type="submit">Load PayPal Buttons</button>
+</form>
+<div id="paypal-button-container" style="margin-top:20px;"></div>
+<script>
+function loadPayPalButton() {
+    const clientId = document.getElementById('clientId').value.trim();
+    const locale = document.getElementById('locale').value.trim();
+    const buyerCountry = document.getElementById('buyerCountry').value.trim();
+    const enableFunding = document.getElementById('enableFunding').value.trim();
+
+    // Remove existing PayPal script if loaded
+    const existingScript = document.querySelector('script[src*="paypal.com/sdk/js"]');
+    if (existingScript) {
+        existingScript.remove();
+    }
+
+    // Build the PayPal SDK URL
+    let sdkUrl = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD`;
+    if (locale) sdkUrl += `&locale=${encodeURIComponent(locale)}`;
+    if (buyerCountry) sdkUrl += `&buyer-country=${encodeURIComponent(buyerCountry)}`;
+    if (enableFunding) sdkUrl += `&enable-funding=${encodeURIComponent(enableFunding)}`;
+
+    // Create and append the new script
+    const script = document.createElement('script');
+    script.src = sdkUrl;
+    script.onload = () => {
+        // Clear any existing buttons
+        const container = document.getElementById('paypal-button-container');
+        container.innerHTML = '';
+
+        paypal.Buttons({
+            createOrder: () => {
+                return fetch('/api/orders', { method: 'POST' })
+                    .then(res => res.json())
+                    .then(order => order.orderID);
+            },
+            onApprove: data => {
+                return fetch(`/api/orders/${data.orderID}/capture`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(details => {
+                        alert('Transaction completed');
+                    });
+            }
+        }).render('#paypal-button-container');
+    };
+    document.head.appendChild(script);
+}
+</script>
 </body>
 </html>
