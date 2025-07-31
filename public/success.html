@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aguardando Pagamento...</title>
+  <style>
+    body { font-family: Arial; padding: 30px; text-align: center; }
+    .paid { color: green; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Status do Pagamento</h2>
+  <p id="status">⏳ Aguardando confirmação de pagamento...</p>
+  <div id="details" style="display: none;">
+    <p><strong>ID da Transação:</strong> <span id="transactionId"></span></p>
+    <p><strong>Valor:</strong> <span id="amount"></span></p>
+    <p><strong>Webhook ID:</strong> <span id="webhookId"></span></p>
+  </div>
+
+  <script>
+    const orderID = new URLSearchParams(window.location.search).get('orderID');
+
+    async function checkStatus() {
+      const res = await fetch(`/api/status/${orderID}`);
+      const data = await res.json();
+
+      if (data.status === 'COMPLETED') {
+        document.getElementById('status').innerHTML = '✅ <span class="paid">Pagamento aprovado com sucesso!</span>';
+        document.getElementById('details').style.display = 'block';
+        document.getElementById('transactionId').textContent = data.transactionId;
+        document.getElementById('amount').textContent = `$${data.amount}`;
+        document.getElementById('webhookId').textContent = data.webhookId;
+        clearInterval(interval);
+      }
+    }
+
+    const interval = setInterval(checkStatus, 3000); // Verifica a cada 3 segundos
+  </script>
+</body>
+</html>
