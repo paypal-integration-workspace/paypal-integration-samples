@@ -1,95 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>PayPal Checkout Integration</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        label {
-            display: block;
-            margin-top: 8px;
-        }
-        input {
-            width: 300px;
-            padding: 5px;
-            margin-top: 4px;
-        }
-        button {
-            margin-top: 12px;
-            padding: 8px 12px;
-            background-color: #0070ba;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>PayPal Checkout Integration</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    label { display: block; margin-top: 10px; }
+    input { width: 300px; padding: 6px; margin-top: 4px; }
+    button { margin-top: 12px; padding: 8px 16px; }
+    #paypal-button-container { margin-top: 20px; }
+  </style>
 </head>
 <body>
-<h1>Configure PayPal Button</h1>
-<p>Use the fields below to configure the PayPal JS SDK. Provide your client ID (e.g., sandbox or live ID) and optionally set a locale, buyer-country (only for sandbox testing) and enable-funding parameters (comma‑separated).</p>
-<form id="configForm" onsubmit="loadPayPalButton(); return false;">
+  <h2>PayPal Checkout Configuration</h2>
+  <form id="config-form">
     <label for="clientId">Client ID</label>
-    <input type="text" id="clientId" name="clientId" placeholder="Enter your PayPal client ID" required>
+    <input id="clientId" required>
 
-    <label for="locale">Locale (optional)</label>
-    <input type="text" id="locale" name="locale" placeholder="e.g., en_US">
+    <label for="clientSecret">Client Secret</label>
+    <input id="clientSecret" type="password" required>
 
-    <label for="buyerCountry">Buyer Country (sandbox only)</label>
-    <input type="text" id="buyerCountry" name="buyerCountry" placeholder="e.g., US">
+    <label for="locale">Locale</label>
+    <input id="locale" value="en_US">
 
-    <label for="enableFunding">Enable Funding (comma‑separated, optional)</label>
-    <input type="text" id="enableFunding" name="enableFunding" placeholder="e.g., venmo,paylater">
+    <label for="buyerCountry">Buyer Country</label>
+    <input id="buyerCountry" value="US">
+
+    <label for="enableFunding">Enable Funding (e.g., venmo)</label>
+    <input id="enableFunding" value="">
 
     <button type="submit">Load PayPal Buttons</button>
-</form>
-<div id="paypal-button-container" style="margin-top:20px;"></div>
-<script>
-function loadPayPalButton() {
-    const clientId = document.getElementById('clientId').value.trim();
-    const locale = document.getElementById('locale').value.trim();
-    const buyerCountry = document.getElementById('buyerCountry').value.trim();
-    const enableFunding = document.getElementById('enableFunding').value.trim();
+  </form>
 
-    // Remove existing PayPal script if loaded
-    const existingScript = document.querySelector('script[src*="paypal.com/sdk/js"]');
-    if (existingScript) {
-        existingScript.remove();
-    }
+  <div id="paypal-button-container"></div>
 
-    // Build the PayPal SDK URL
-    let sdkUrl = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD`;
-    if (locale) sdkUrl += `&locale=${encodeURIComponent(locale)}`;
-    if (buyerCountry) sdkUrl += `&buyer-country=${encodeURIComponent(buyerCountry)}`;
-    if (enableFunding) sdkUrl += `&enable-funding=${encodeURIComponent(enableFunding)}`;
+  <script>
+    document.getElementById('config-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
 
-    // Create and append the new script
-    const script = document.createElement('script');
-    script.src = sdkUrl;
-    script.onload = () => {
-        // Clear any existing buttons
-        const container = document.getElementById('paypal-button-container');
-        container.innerHTML = '';
+      const clientId = document.getElementById('clientId').value;
+      const clientSecret = document.getElementById('clientSecret').value;
+      const locale = document.getElementById('locale').value;
+      const buyerCountry = document.getElementById('buyerCountry').value;
+      const enableFunding = document.getElementById('enableFunding').value;
 
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, clientSecret })
+      });
+
+      const oldScript = document.getElementById('paypal-sdk');
+      if (oldScript) oldScript.remove();
+
+      const sdkUrl = new URL('https://www.paypal.com/sdk/js');
+      sdkUrl.searchParams.set('client-id', clientId);
+      if (locale) sdkUrl.searchParams.set('locale', locale);
+      if (buyerCountry) sdkUrl.searchParams.set('buyer-country', buyerCountry);
+      if (enableFunding) sdkUrl.searchParams.set('enable-funding', enableFunding);
+
+      const script = document.createElement('script');
+      script.src = sdkUrl.toString();
+      script.id = 'paypal-sdk';
+      script.onload = () => {
         paypal.Buttons({
-            createOrder: () => {
-                return fetch('/api/orders', { method: 'POST' })
-                    .then(res => res.json())
-                    .then(order => order.orderID);
-            },
-            onApprove: data => {
-                return fetch(`/api/orders/${data.orderID}/capture`, { method: 'POST' })
-                    .then(res => res.json())
-                    .then(details => {
-                        alert('Transaction completed');
-                    });
-            }
+          createOrder: async () => {
+            const res = await fetch('/api/orders', { method: 'POST' });
+            const data = await res.json();
+            return data.id;
+          },
+          onApprove: async (data) => {
+            const res = await fetch(`/api/orders/${data.orderID}/capture`, { method: 'POST' });
+            const details = await res.json();
+            alert(`Transaction completed by ${details.payer.name.given_name}`);
+          }
         }).render('#paypal-button-container');
-    };
-    document.head.appendChild(script);
-}
-</script>
+      };
+
+      document.body.appendChild(script);
+    });
+  </script>
 </body>
 </html>
