@@ -4,7 +4,6 @@ const paypal = require('@paypal/checkout-server-sdk');
 const dotenv = require('dotenv');
 dotenv.config();
 
-// PayPal environment setup
 const environment = new paypal.core.SandboxEnvironment(
   process.env.PAYPAL_CLIENT_ID,
   process.env.PAYPAL_CLIENT_SECRET
@@ -13,11 +12,12 @@ const client = new paypal.core.PayPalHttpClient(environment);
 
 const app = express();
 app.use(express.json());
-
-// Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Create Order endpoint
+// 💾 Armazenamento temporário dos pagamentos
+const paymentStatus = {};
+
+// Criar pedido
 app.post('/api/orders', async (req, res) => {
   const request = new paypal.orders.OrdersCreateRequest();
   request.prefer('return=representation');
@@ -42,7 +42,7 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// Capture Order endpoint
+// Capturar pedido
 app.post('/api/orders/:orderID/capture', async (req, res) => {
   const { orderID } = req.params;
   const request = new paypal.orders.OrdersCaptureRequest(orderID);
@@ -57,27 +57,49 @@ app.post('/api/orders/:orderID/capture', async (req, res) => {
   }
 });
 
-// ✅ Webhook Listener endpoint
+// Webhook do PayPal
 app.post('/webhook', (req, res) => {
   const event = req.body;
 
   console.log('📩 Webhook recebido:');
   console.log(JSON.stringify(event, null, 2));
 
-  if (event.event_type === 'CHECKOUT.ORDER.APPROVED') {
-    console.log('✅ Pedido aprovado pelo cliente');
-    // Você pode salvar o orderID, buyer info, etc. aqui
-  }
-
   if (event.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
-    console.log('💰 Pagamento capturado com sucesso');
-    // Atualize status de pedido, estoque, etc.
+    const resource = event.resource;
+    const orderId = resource.supplementary_data?.related_ids?.order_id;
+    const transactionId = resource.id;
+    const amount = resource.amount?.value;
+    const webhookId = event.id;
+
+    if (orderId) {
+      paymentStatus[orderId] = {
+        status: 'COMPLETED',
+        transactionId,
+        amount,
+        webhookId
+      };
+      console.log(`✅ Pagamento salvo para o orderID: ${orderId}`);
+    } else {
+      console.warn('⚠️ order_id não encontrado no webhook');
+    }
   }
 
   res.sendStatus(200);
 });
 
-// Start server
+// Nova rota para verificar status do pagamento
+app.get('/api/status/:orderID', (req, res) => {
+  const { orderID } = req.params;
+  const status = paymentStatus[orderID];
+
+  if (status) {
+    res.json(status);
+  } else {
+    res.json({ status: 'PENDING' });
+  }
+});
+
+// Iniciar servidor
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
