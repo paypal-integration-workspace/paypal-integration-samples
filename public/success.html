@@ -1,28 +1,66 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Aguardando Pagamento</title>
+  <title>Status do Pagamento - Jeff Tubarão</title>
   <style>
-    body { font-family: Arial; padding: 30px; text-align: center; }
-    button { padding: 10px 20px; margin-top: 20px; font-size: 16px; }
-    .paid { color: green; font-weight: bold; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 40px;
+      text-align: center;
+    }
+    .status-container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 500px;
+      margin: auto;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+    .status-container h2 {
+      margin-bottom: 10px;
+      color: #003087;
+    }
+    .status-container p {
+      font-size: 18px;
+      margin: 10px 0;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      background: #0070ba;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .paid {
+      color: green;
+      font-weight: bold;
+    }
+    #details {
+      margin-top: 20px;
+      text-align: left;
+    }
   </style>
 </head>
 <body>
-  <h2>Status do Pagamento</h2>
-  <p id="status">⏳ Aguardando ação de captura</p>
-
-  <button id="captureBtn">Capturar Pagamento</button>
-
-  <div id="processing" style="display: none;">
-    <p>💳 Pagamento em processamento...</p>
-  </div>
-
-  <div id="details" style="display: none;">
-    <p><strong>ID da Transação:</strong> <span id="transactionId"></span></p>
-    <p><strong>Valor:</strong> <span id="amount"></span></p>
-    <p><strong>Webhook ID:</strong> <span id="webhookId"></span></p>
+  <div class="status-container">
+    <h2>Status do Pagamento</h2>
+    <p id="status">⏳ Aguardando ação de captura</p>
+    <button id="captureBtn">Capturar Pagamento</button>
+    <div id="processing" style="display: none;">
+      <p>💳 Pagamento em processamento...</p>
+    </div>
+    <div id="details" style="display: none;">
+      <p><strong>ID da Transação:</strong> <span id="transactionId"></span></p>
+      <p><strong>Valor:</strong> <span id="amount"></span></p>
+      <p><strong>Webhook ID:</strong> <span id="webhookId"></span></p>
+    </div>
   </div>
 
   <script>
@@ -36,7 +74,6 @@
       captureBtn.disabled = true;
       processingEl.style.display = 'block';
       statusEl.textContent = '⏳ Captura iniciada. Aguardando confirmação...';
-
       try {
         await fetch(`/api/orders/${orderID}/capture`, { method: 'POST' });
       } catch (e) {
