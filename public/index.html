@@ -73,10 +73,11 @@
             const data = await res.json();
             return data.orderID; // Corrigido aqui!
           },
-          onApprove: (data) => {
-  // Redireciona para página de aguardando
+     onApprove: (data) => {
+  // Agora, não capturamos aqui — apenas redirecionamos para success.html
   window.location.href = `/success.html?orderID=${data.orderID}`;
 }
+
 
         }).render('#paypal-button-container');
       };
