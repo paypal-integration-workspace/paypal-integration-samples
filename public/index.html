@@ -73,11 +73,11 @@
             const data = await res.json();
             return data.orderID; // Corrigido aqui!
           },
-          onApprove: async (data) => {
-            const res = await fetch(`/api/orders/${data.orderID}/capture`, { method: 'POST' });
-            const details = await res.json();
-            alert(`Transaction completed by ${details.payer.name.given_name}`);
-          }
+          onApprove: (data) => {
+  // Redireciona para página de aguardando
+  window.location.href = `/success.html?orderID=${data.orderID}`;
+}
+
         }).render('#paypal-button-container');
       };
 
