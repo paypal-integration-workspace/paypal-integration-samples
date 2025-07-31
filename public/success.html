@@ -2,15 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Aguardando Pagamento...</title>
+  <title>Aguardando Pagamento</title>
   <style>
     body { font-family: Arial; padding: 30px; text-align: center; }
+    button { padding: 10px 20px; margin-top: 20px; font-size: 16px; }
     .paid { color: green; font-weight: bold; }
   </style>
 </head>
 <body>
   <h2>Status do Pagamento</h2>
-  <p id="status">⏳ Aguardando confirmação de pagamento...</p>
+  <p id="status">⏳ Aguardando ação de captura</p>
+
+  <button id="captureBtn">Capturar Pagamento</button>
+
+  <div id="processing" style="display: none;">
+    <p>💳 Pagamento em processamento...</p>
+  </div>
+
   <div id="details" style="display: none;">
     <p><strong>ID da Transação:</strong> <span id="transactionId"></span></p>
     <p><strong>Valor:</strong> <span id="amount"></span></p>
@@ -19,22 +27,41 @@
 
   <script>
     const orderID = new URLSearchParams(window.location.search).get('orderID');
+    const statusEl = document.getElementById('status');
+    const captureBtn = document.getElementById('captureBtn');
+    const processingEl = document.getElementById('processing');
+    const detailsEl = document.getElementById('details');
+
+    captureBtn.addEventListener('click', async () => {
+      captureBtn.disabled = true;
+      processingEl.style.display = 'block';
+      statusEl.textContent = '⏳ Captura iniciada. Aguardando confirmação...';
+
+      try {
+        await fetch(`/api/orders/${orderID}/capture`, { method: 'POST' });
+      } catch (e) {
+        statusEl.textContent = '❌ Erro ao capturar pagamento.';
+        console.error(e);
+      }
+    });
 
     async function checkStatus() {
       const res = await fetch(`/api/status/${orderID}`);
       const data = await res.json();
 
       if (data.status === 'COMPLETED') {
-        document.getElementById('status').innerHTML = '✅ <span class="paid">Pagamento aprovado com sucesso!</span>';
-        document.getElementById('details').style.display = 'block';
+        statusEl.innerHTML = '✅ <span class="paid">Pagamento aprovado com sucesso!</span>';
         document.getElementById('transactionId').textContent = data.transactionId;
         document.getElementById('amount').textContent = `$${data.amount}`;
         document.getElementById('webhookId').textContent = data.webhookId;
+        detailsEl.style.display = 'block';
+        captureBtn.style.display = 'none';
+        processingEl.style.display = 'none';
         clearInterval(interval);
       }
     }
 
-    const interval = setInterval(checkStatus, 3000); // Verifica a cada 3 segundos
+    const interval = setInterval(checkStatus, 3000);
   </script>
 </body>
 </html>
