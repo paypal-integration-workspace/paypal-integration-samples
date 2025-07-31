@@ -1,84 +1,84 @@
-const express = require('express');
-const path = require('path');
-const paypal = require('@paypal/checkout-server-sdk');
-const dotenv = require('dotenv');
-dotenv.config();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PayPal Checkout Integration</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    label { display: block; margin-top: 10px; }
+    input { width: 300px; padding: 6px; margin-top: 4px; }
+    button { margin-top: 12px; padding: 8px 16px; }
+    #paypal-button-container { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h2>PayPal Checkout Configuration</h2>
+  <form id="config-form">
+    <label for="clientId">Client ID</label>
+    <input id="clientId" required>
 
-// PayPal environment setup
-const environment = new paypal.core.SandboxEnvironment(
-  process.env.PAYPAL_CLIENT_ID,
-  process.env.PAYPAL_CLIENT_SECRET
-);
-const client = new paypal.core.PayPalHttpClient(environment);
+    <label for="clientSecret">Client Secret</label>
+    <input id="clientSecret" type="password" required>
 
-const app = express();
-app.use(express.json());
+    <label for="locale">Locale</label>
+    <input id="locale" value="en_US">
 
-// Serve static files from the public directory
-app.use(express.static(path.join(__dirname, 'public')));
+    <label for="buyerCountry">Buyer Country</label>
+    <input id="buyerCountry" value="US">
 
-// Create Order endpoint
-app.post('/api/orders', async (req, res) => {
-  const request = new paypal.orders.OrdersCreateRequest();
-  request.prefer('return=representation');
-  request.requestBody({
-    intent: 'CAPTURE',
-    purchase_units: [
-      {
-        amount: {
-          currency_code: 'USD',
-          value: '10.00'
-        }
-      }
-    ]
-  });
+    <label for="enableFunding">Enable Funding (e.g., venmo)</label>
+    <input id="enableFunding" value="">
 
-  try {
-    const order = await client.execute(request);
-    res.status(201).json({ orderID: order.result.id });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Error creating order');
-  }
-});
+    <button type="submit">Load PayPal Buttons</button>
+  </form>
 
-// Capture Order endpoint
-app.post('/api/orders/:orderID/capture', async (req, res) => {
-  const { orderID } = req.params;
-  const request = new paypal.orders.OrdersCaptureRequest(orderID);
-  request.requestBody({});
+  <div id="paypal-button-container"></div>
 
-  try {
-    const capture = await client.execute(request);
-    res.status(200).json({ capture });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Error capturing order');
-  }
-});
+  <script>
+    document.getElementById('config-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
 
-// ✅ Webhook Listener endpoint
-app.post('/webhook', (req, res) => {
-  const event = req.body;
+      const clientId = document.getElementById('clientId').value;
+      const clientSecret = document.getElementById('clientSecret').value;
+      const locale = document.getElementById('locale').value;
+      const buyerCountry = document.getElementById('buyerCountry').value;
+      const enableFunding = document.getElementById('enableFunding').value;
 
-  console.log('📩 Webhook recebido:');
-  console.log(JSON.stringify(event, null, 2));
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, clientSecret })
+      });
 
-  if (event.event_type === 'CHECKOUT.ORDER.APPROVED') {
-    console.log('✅ Pedido aprovado pelo cliente');
-    // Você pode salvar o orderID, buyer info, etc. aqui
-  }
+      const oldScript = document.getElementById('paypal-sdk');
+      if (oldScript) oldScript.remove();
 
-  if (event.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
-    console.log('💰 Pagamento capturado com sucesso');
-    // Atualize status de pedido, estoque, etc.
-  }
+      const sdkUrl = new URL('https://www.paypal.com/sdk/js');
+      sdkUrl.searchParams.set('client-id', clientId);
+      if (locale) sdkUrl.searchParams.set('locale', locale);
+      if (buyerCountry) sdkUrl.searchParams.set('buyer-country', buyerCountry);
+      if (enableFunding) sdkUrl.searchParams.set('enable-funding', enableFunding);
 
-  res.sendStatus(200);
-});
+      const script = document.createElement('script');
+      script.src = sdkUrl.toString();
+      script.id = 'paypal-sdk';
+      script.onload = () => {
+        paypal.Buttons({
+          createOrder: async () => {
+            const res = await fetch('/api/orders', { method: 'POST' });
+            const data = await res.json();
+            return data.id;
+          },
+          onApprove: async (data) => {
+            const res = await fetch(`/api/orders/${data.orderID}/capture`, { method: 'POST' });
+            const details = await res.json();
+            alert(`Transaction completed by ${details.payer.name.given_name}`);
+          }
+        }).render('#paypal-button-container');
+      };
 
-// Start server
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
-});
+      document.body.appendChild(script);
+    });
+  </script>
+</body>
+</html>
