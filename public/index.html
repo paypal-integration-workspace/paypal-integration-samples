@@ -44,15 +44,18 @@
       const buyerCountry = document.getElementById('buyerCountry').value;
       const enableFunding = document.getElementById('enableFunding').value;
 
+      // Envia client ID e secret para backend (segurança limitada para sandbox)
       await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clientId, clientSecret })
       });
 
+      // Remove SDK anterior se existir
       const oldScript = document.getElementById('paypal-sdk');
       if (oldScript) oldScript.remove();
 
+      // Monta URL do SDK com parâmetros fornecidos
       const sdkUrl = new URL('https://www.paypal.com/sdk/js');
       sdkUrl.searchParams.set('client-id', clientId);
       if (locale) sdkUrl.searchParams.set('locale', locale);
@@ -62,12 +65,13 @@
       const script = document.createElement('script');
       script.src = sdkUrl.toString();
       script.id = 'paypal-sdk';
+
       script.onload = () => {
         paypal.Buttons({
           createOrder: async () => {
             const res = await fetch('/api/orders', { method: 'POST' });
             const data = await res.json();
-            return data.id;
+            return data.orderID; // Corrigido aqui!
           },
           onApprove: async (data) => {
             const res = await fetch(`/api/orders/${data.orderID}/capture`, { method: 'POST' });
