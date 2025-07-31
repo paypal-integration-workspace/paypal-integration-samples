@@ -9,8 +9,8 @@
 <body>
   <h1>PayPal Checkout Integration</h1>
   <div id="paypal-button-container"></div>
-  <!-- Load PayPal's JS SDK with client ID and enable Venmo and locale -->
-  <script src="https://www.paypal.com/sdk/js?client-id=ASoiGApDh_Ap4A7C6qhEhX5a9CaKAEwbmKoNr_kymdbQxIDxTznAwWr_-2PD2S-xqTvKJMT1w-yW8_ea&currency=USD&locale=en_US&enable-funding=venmo"></script>
+  <!-- Load PayPal's JS SDK with client ID, locale, buyer country for sandbox, and enable Venmo -->
+  <script src="https://www.paypal.com/sdk/js?client-id=ASoiGApDh_Ap4A7C6qhEhX5a9CaKAEwbmKoNr_kymdbQxIDxTznAwWr_-2PD2S-xqTvKJMT1w-yW8_ea&currency=USD&locale=en_US&buyer-country=US&enable-funding=venmo"></script>
   <script>
     // Render the PayPal button into #paypal-button-container
     paypal.Buttons({
