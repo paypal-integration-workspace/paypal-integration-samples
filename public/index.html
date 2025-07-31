@@ -3,7 +3,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Comprar Jeff Tubarão da Terra - PayPal Checkout</title>
+  <title>Loja Oficial do Jeff Tubarão</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -21,10 +21,42 @@
       width: 100%;
       text-align: center;
     }
+    form {
+      background: white;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 500px;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 20px;
+      background-color: #0070ba;
+      color: white;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
     .product-card {
       background: white;
       padding: 20px;
-      margin-top: 40px;
+      margin-top: 20px;
       border-radius: 12px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
       text-align: center;
@@ -52,25 +84,79 @@
     <h1>Loja Oficial do Jeff Tubarão</h1>
   </header>
 
+  <form id="config-form">
+    <label for="clientId">Client ID</label>
+    <input id="clientId" required>
+
+    <label for="clientSecret">Client Secret</label>
+    <input id="clientSecret" type="password" required>
+
+    <label for="amount">Valor (ex: 10.00)</label>
+    <input id="amount" value="10.00" required>
+
+    <label for="currency">Moeda</label>
+    <input id="currency" value="USD" required>
+
+    <label for="locale">Locale</label>
+    <select id="locale">
+      <option value="pt_BR">Português (Brasil)</option>
+      <option value="en_US">Inglês (EUA)</option>
+      <option value="es_ES">Espanhol (Espanha)</option>
+      <option value="fr_FR">Francês (França)</option>
+    </select>
+
+    <button type="submit">Carregar Botão do PayPal</button>
+  </form>
+
   <div class="product-card">
-    <img src="cd623d07-9c85-4fd9-abce-2010019ec054.png" alt="Pelúcia Jeff Tubarão da Terra">
+    <img src="jeff.png" alt="Pelúcia Jeff Tubarão da Terra">
     <h3>Pelúcia Jeff Tubarão da Terra</h3>
-    <p>Direto das profundezas do oceano terrestre, essa pelúcia é macia, fofa e pronta para aventuras! Leve o Jeff para casa por apenas <strong>$10.00</strong>.</p>
+    <p>Direto das profundezas do oceano terrestre, essa pelúcia é macia, fofa e pronta para aventuras! Leve o Jeff para casa!</p>
     <div id="paypal-button-container"></div>
   </div>
 
-  <script src="https://www.paypal.com/sdk/js?client-id=sb"></script>
   <script>
-    paypal.Buttons({
-      createOrder: async () => {
-        const res = await fetch('/api/orders', { method: 'POST' });
-        const data = await res.json();
-        return data.orderID;
-      },
-      onApprove: (data) => {
-        window.location.href = `/success.html?orderID=${data.orderID}`;
-      }
-    }).render('#paypal-button-container');
+    document.getElementById('config-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const clientId = document.getElementById('clientId').value;
+      const clientSecret = document.getElementById('clientSecret').value;
+      const locale = document.getElementById('locale').value;
+      const currency = document.getElementById('currency').value;
+      const amount = document.getElementById('amount').value;
+
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, clientSecret, currency, amount })
+      });
+
+      const oldScript = document.getElementById('paypal-sdk');
+      if (oldScript) oldScript.remove();
+
+      const sdkUrl = new URL('https://www.paypal.com/sdk/js');
+      sdkUrl.searchParams.set('client-id', clientId);
+      sdkUrl.searchParams.set('locale', locale);
+      sdkUrl.searchParams.set('currency', currency);
+
+      const script = document.createElement('script');
+      script.src = sdkUrl.toString();
+      script.id = 'paypal-sdk';
+      script.onload = () => {
+        paypal.Buttons({
+          createOrder: async () => {
+            const res = await fetch('/api/orders', { method: 'POST' });
+            const data = await res.json();
+            return data.orderID;
+          },
+          onApprove: (data) => {
+            window.location.href = `/success.html?orderID=${data.orderID}`;
+          }
+        }).render('#paypal-button-container');
+      };
+
+      document.body.appendChild(script);
+    });
   </script>
 </body>
 </html>
