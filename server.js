@@ -4,21 +4,51 @@ const paypal = require('@paypal/checkout-server-sdk');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const environment = new paypal.core.SandboxEnvironment(
-  process.env.PAYPAL_CLIENT_ID,
-  process.env.PAYPAL_CLIENT_SECRET
-);
-const client = new paypal.core.PayPalHttpClient(environment);
-
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 💾 Armazenamento temporário dos pagamentos
+// 💾 Armazenamento temporário dos pagamentos e credenciais
 const paymentStatus = {};
 
-// Criar pedido
+let runtimeCredentials = {
+  clientId: process.env.PAYPAL_CLIENT_ID,
+  clientSecret: process.env.PAYPAL_CLIENT_SECRET,
+  amount: '10.00',
+  currency: 'USD'
+};
+
+let environment = new paypal.core.SandboxEnvironment(
+  runtimeCredentials.clientId,
+  runtimeCredentials.clientSecret
+);
+let client = new paypal.core.PayPalHttpClient(environment);
+
+// 🔧 Rota para atualizar clientId, secret, valor e moeda
+app.post('/api/config', (req, res) => {
+  const { clientId, clientSecret, amount, currency } = req.body;
+
+  runtimeCredentials = {
+    clientId: clientId || runtimeCredentials.clientId,
+    clientSecret: clientSecret || runtimeCredentials.clientSecret,
+    amount: amount || runtimeCredentials.amount,
+    currency: currency || runtimeCredentials.currency
+  };
+
+  environment = new paypal.core.SandboxEnvironment(
+    runtimeCredentials.clientId,
+    runtimeCredentials.clientSecret
+  );
+  client = new paypal.core.PayPalHttpClient(environment);
+
+  console.log('⚙️ Configuração atualizada via /api/config');
+  res.sendStatus(200);
+});
+
+// Criar pedido com amount e currency dinâmicos
 app.post('/api/orders', async (req, res) => {
+  const { amount, currency } = runtimeCredentials;
+
   const request = new paypal.orders.OrdersCreateRequest();
   request.prefer('return=representation');
   request.requestBody({
@@ -26,8 +56,8 @@ app.post('/api/orders', async (req, res) => {
     purchase_units: [
       {
         amount: {
-          currency_code: 'USD',
-          value: '10.00'
+          currency_code: currency,
+          value: amount
         }
       }
     ]
@@ -87,7 +117,7 @@ app.post('/webhook', (req, res) => {
   res.sendStatus(200);
 });
 
-// Nova rota para verificar status do pagamento
+// Verificar status
 app.get('/api/status/:orderID', (req, res) => {
   const { orderID } = req.params;
   const status = paymentStatus[orderID];
