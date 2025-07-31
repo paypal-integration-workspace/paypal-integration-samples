@@ -1,6 +1,6 @@
 const express = require('express');
 const path = require('path');
-const paypal = require('@paypal/paypal-server-sdk');
+const paypal = require('@@paypal/checkout-server-sdk');
 const dotenv = require('dotenv');
 dotenv.config();
 
