@@ -1,89 +1,76 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>PayPal Checkout Integration</title>
+  <title>Comprar Jeff Tubarão da Terra - PayPal Checkout</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    label { display: block; margin-top: 10px; }
-    input { width: 300px; padding: 6px; margin-top: 4px; }
-    button { margin-top: 12px; padding: 8px 16px; }
-    #paypal-button-container { margin-top: 20px; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f2f7fa;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      background: #003087;
+      color: white;
+      padding: 20px;
+      width: 100%;
+      text-align: center;
+    }
+    .product-card {
+      background: white;
+      padding: 20px;
+      margin-top: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 400px;
+    }
+    .product-card img {
+      width: 100%;
+      border-radius: 12px;
+    }
+    .product-card h3 {
+      margin: 20px 0 10px;
+      color: #003087;
+    }
+    .product-card p {
+      font-size: 18px;
+      color: #111;
+    }
+    #paypal-button-container {
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
-  <h2>PayPal Checkout Configuration</h2>
-  <form id="config-form">
-    <label for="clientId">Client ID</label>
-    <input id="clientId" required>
+  <header>
+    <h1>Loja Oficial do Jeff Tubarão</h1>
+  </header>
 
-    <label for="clientSecret">Client Secret</label>
-    <input id="clientSecret" type="password" required>
+  <div class="product-card">
+    <img src="https://cdn.awsli.com.br/800x800/2443/2443282/produto/254091964/jeff-tubarao-da-terra-boneco-oficial-51qkp0sfgr.jpg" alt="Pelúcia Jeff Tubarão da Terra">
+    <h3>Pelúcia Jeff Tubarão da Terra</h3>
+    <p>Direto das profundezas do oceano terrestre, essa pelúcia é macia, fofa e pronta para aventuras! Leve o Jeff para casa por apenas <strong>$10.00</strong>.</p>
+    <div id="paypal-button-container"></div>
+  </div>
 
-    <label for="locale">Locale</label>
-    <input id="locale" value="en_US">
-
-    <label for="buyerCountry">Buyer Country</label>
-    <input id="buyerCountry" value="US">
-
-    <label for="enableFunding">Enable Funding (e.g., venmo)</label>
-    <input id="enableFunding" value="">
-
-    <button type="submit">Load PayPal Buttons</button>
-  </form>
-
-  <div id="paypal-button-container"></div>
-
+  <script src="https://www.paypal.com/sdk/js?client-id=sb"></script>
   <script>
-    document.getElementById('config-form').addEventListener('submit', async function (e) {
-      e.preventDefault();
-
-      const clientId = document.getElementById('clientId').value;
-      const clientSecret = document.getElementById('clientSecret').value;
-      const locale = document.getElementById('locale').value;
-      const buyerCountry = document.getElementById('buyerCountry').value;
-      const enableFunding = document.getElementById('enableFunding').value;
-
-      // Envia client ID e secret para backend (segurança limitada para sandbox)
-      await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, clientSecret })
-      });
-
-      // Remove SDK anterior se existir
-      const oldScript = document.getElementById('paypal-sdk');
-      if (oldScript) oldScript.remove();
-
-      // Monta URL do SDK com parâmetros fornecidos
-      const sdkUrl = new URL('https://www.paypal.com/sdk/js');
-      sdkUrl.searchParams.set('client-id', clientId);
-      if (locale) sdkUrl.searchParams.set('locale', locale);
-      if (buyerCountry) sdkUrl.searchParams.set('buyer-country', buyerCountry);
-      if (enableFunding) sdkUrl.searchParams.set('enable-funding', enableFunding);
-
-      const script = document.createElement('script');
-      script.src = sdkUrl.toString();
-      script.id = 'paypal-sdk';
-
-      script.onload = () => {
-        paypal.Buttons({
-          createOrder: async () => {
-            const res = await fetch('/api/orders', { method: 'POST' });
-            const data = await res.json();
-            return data.orderID; // Corrigido aqui!
-          },
-     onApprove: (data) => {
-  // Agora, não capturamos aqui — apenas redirecionamos para success.html
-  window.location.href = `/success.html?orderID=${data.orderID}`;
-}
-
-
-        }).render('#paypal-button-container');
-      };
-
-      document.body.appendChild(script);
-    });
+    paypal.Buttons({
+      createOrder: async () => {
+        const res = await fetch('/api/orders', { method: 'POST' });
+        const data = await res.json();
+        return data.orderID;
+      },
+      onApprove: (data) => {
+        window.location.href = `/success.html?orderID=${data.orderID}`;
+      }
+    }).render('#paypal-button-container');
   </script>
 </body>
 </html>
