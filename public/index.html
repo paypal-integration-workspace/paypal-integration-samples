@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -105,6 +104,13 @@
       <option value="fr_FR">Francês (França)</option>
     </select>
 
+    <!-- NOVO: seleção da intent -->
+    <label for="intent">Intent</label>
+    <select id="intent">
+      <option value="CAPTURE">CAPTURE (capturar agora)</option>
+      <option value="AUTHORIZE">AUTHORIZE (capturar depois)</option>
+    </select>
+
     <button type="submit">Carregar Botão do PayPal</button>
   </form>
 
@@ -124,20 +130,26 @@
       const locale = document.getElementById('locale').value;
       const currency = document.getElementById('currency').value;
       const amount = document.getElementById('amount').value;
+      const intent = document.getElementById('intent').value; // CAPTURE | AUTHORIZE
 
+      // Envia as configs ao backend (guarde o secret apenas no servidor)
       await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, clientSecret, currency, amount })
+        body: JSON.stringify({ clientId, clientSecret, currency, amount, intent })
       });
 
+      // Remove SDK anterior (se houver)
       const oldScript = document.getElementById('paypal-sdk');
       if (oldScript) oldScript.remove();
 
+      // Carrega o SDK com locale, currency e intent
       const sdkUrl = new URL('https://www.paypal.com/sdk/js');
       sdkUrl.searchParams.set('client-id', clientId);
       sdkUrl.searchParams.set('locale', locale);
       sdkUrl.searchParams.set('currency', currency);
+      // 'capture' | 'authorize' em minúsculas
+      sdkUrl.searchParams.set('intent', intent.toLowerCase());
 
       const script = document.createElement('script');
       script.src = sdkUrl.toString();
@@ -145,12 +157,41 @@
       script.onload = () => {
         paypal.Buttons({
           createOrder: async () => {
-            const res = await fetch('/api/orders', { method: 'POST' });
+            // Cria o pedido no backend já com a intent
+            const res = await fetch('/api/orders', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amount, currency, intent })
+            });
             const data = await res.json();
             return data.orderID;
           },
-          onApprove: (data) => {
-            window.location.href = `/success.html?orderID=${data.orderID}`;
+          onApprove: async (data) => {
+            try {
+              if (intent === 'CAPTURE') {
+                // Captura imediata
+                const res = await fetch('/api/capture', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ orderID: data.orderID })
+                });
+                const result = await res.json();
+                // Redireciona com status
+                window.location.href = `/success.html?orderID=${data.orderID}&status=captured`;
+              } else {
+                // Somente autorização (captura posterior)
+                const res = await fetch('/api/authorize', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ orderID: data.orderID })
+                });
+                const result = await res.json();
+                window.location.href = `/success.html?orderID=${data.orderID}&status=authorized`;
+              }
+            } catch (err) {
+              console.error(err);
+              alert('Ocorreu um erro ao finalizar a transação.');
+            }
           }
         }).render('#paypal-button-container');
       };
