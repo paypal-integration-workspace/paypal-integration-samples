@@ -104,7 +104,7 @@
       <option value="fr_FR">Francês (França)</option>
     </select>
 
-    <!-- NOVO: seleção da intent -->
+    <!-- Seleção da intent -->
     <label for="intent">Intent</label>
     <select id="intent">
       <option value="CAPTURE">CAPTURE (capturar agora)</option>
@@ -132,6 +132,10 @@
       const amount = document.getElementById('amount').value;
       const intent = document.getElementById('intent').value; // CAPTURE | AUTHORIZE
 
+      if (currency.toUpperCase() !== 'USD') {
+        alert('Para Venmo, use USD.');
+      }
+
       // Envia as configs ao backend (guarde o secret apenas no servidor)
       await fetch('/api/config', {
         method: 'POST',
@@ -143,13 +147,14 @@
       const oldScript = document.getElementById('paypal-sdk');
       if (oldScript) oldScript.remove();
 
-      // Carrega o SDK com locale, currency e intent
+      // Carrega o SDK com locale, currency, intent e VENMO habilitado
       const sdkUrl = new URL('https://www.paypal.com/sdk/js');
       sdkUrl.searchParams.set('client-id', clientId);
       sdkUrl.searchParams.set('locale', locale);
       sdkUrl.searchParams.set('currency', currency);
-      // 'capture' | 'authorize' em minúsculas
       sdkUrl.searchParams.set('intent', intent.toLowerCase());
+      // >>> Habilita Venmo <<<
+      sdkUrl.searchParams.set('enable-funding', 'venmo');
 
       const script = document.createElement('script');
       script.src = sdkUrl.toString();
@@ -176,10 +181,9 @@
                   body: JSON.stringify({ orderID: data.orderID })
                 });
                 const result = await res.json();
-                // Redireciona com status
                 window.location.href = `/success.html?orderID=${data.orderID}&status=captured`;
               } else {
-                // Somente autorização (captura posterior)
+                // Apenas autorização
                 const res = await fetch('/api/authorize', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
